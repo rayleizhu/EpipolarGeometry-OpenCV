@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+from scipy import stats
 
 def get_sift_matches(img1, img2):
     '''
@@ -177,6 +178,39 @@ def get_disp_map(im_left_rect, im_right_rect, num_disp=96, method='sgbm', filter
     return displ_n, dispr_n
 
 
-    
-    
+
+def draw_points_and_line(pts, img):
+    color = tuple(np.random.randint(0,255,3).tolist())
+    assert len(pts) == 2
+    img = cv2.circle(img, tuple(pts[0].tolist()), 5, color, -1)
+    img = cv2.circle(img, tuple(pts[1].tolist()), 5, color, -1)
+    img = img1 = cv2.line(img,
+                          tuple(pts[0].tolist()), 
+                          tuple(pts[1].tolist()),
+                          color,3)
+    return img    
+
+
+def reject_outliers(data, m=3):
+    return data[abs(data - np.mean(data)) < m * np.std(data)]
+
+def cal_normalized_distance(disp_map, pt1, pt2):
+    disps = []
+    for y in range(pt1[1], pt2[1]):
+        x = pt1[0] + ((y - pt1[1]) / (pt2[1] - pt1[1])) * (pt2[0] - pt1[0])
+        x = int(x)
+        disps.append(disp_map[y, x])
+    disps = reject_outliers(np.array(disps))
+    min_disp = np.min(disps)
+    max_disp = np.max(disps)
+    disp_range = np.max(disps) - min_disp
+    # in the following case we don't trust the mean disparity
+    if disp_range / (min_disp + 1e-3) > 5 or max_disp < 5:
+        disp = np.max(disps)
+    else:
+        disp = np.mean(disps)
+    dist = np.linalg.norm(pt2 - pt1)
+    return dist / disp
+
+
     
